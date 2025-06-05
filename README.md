@@ -1,73 +1,110 @@
-# Welcome to your Lovable project
+# Wolfram STEM Tutor
 
-## Project info
+Wolfram STEM Tutor is an AI-powered question-answering web application that helps K-12 students solve math and science questions using the computational power of Wolfram Alpha. The project consists of a React frontend and a Flask backend that acts as a proxy to the Wolfram Alpha API.
 
-**URL**: https://lovable.dev/projects/8704c787-bbe5-4e9a-8fa2-1dc3da8fe327
+---
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Ask Math and Science Questions:** Type your question and receive step-by-step solutions powered by Wolfram Alpha.
+- **Modern UI:** Built with React and Tailwind CSS for a clean and responsive design.
+- **API Proxy:** The backend securely communicates with Wolfram Alpha, keeping your API key safe.
+- **Easy Local Setup:** Run both frontend and backend locally for quick testing and development.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8704c787-bbe5-4e9a-8fa2-1dc3da8fe327) and start prompting.
+## Project Structure
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+stem-tutor-query-solve/
+├── app.py                # Flask backend (API proxy)
+├── requirements.txt      # Backend Python dependencies
+├── package.json          # Frontend project configuration
+├── vite.config.ts        # Vite config (frontend dev server & proxy)
+├── src/                  # Frontend React application source code
+└── ...                   # Other supporting files
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Getting Started
 
-**Use GitHub Codespaces**
+### Prerequisites
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- [Node.js](https://nodejs.org/) (v16+ recommended)
+- [Python](https://www.python.org/) (v3.8+)
+- [pip](https://pip.pypa.io/en/stable/)
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+### 1. Clone the Repository
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+git clone https://github.com/karthiek390/stem-tutor-query-solve.git
+cd stem-tutor-query-solve
+```
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/8704c787-bbe5-4e9a-8fa2-1dc3da8fe327) and click on Share -> Publish.
+### 2. Install and Start the Backend
 
-## Can I connect a custom domain to my Lovable project?
+1. **Install Python dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-Yes, you can!
+2. **Start the Flask backend:**
+    ```bash
+    python app.py
+    ```
+    The backend will start on [http://localhost:5000](http://localhost:5000).
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### 3. Install and Start the Frontend
+
+1. **Install Node.js dependencies:**
+    ```bash
+    npm install
+    ```
+
+2. **Start the frontend development server:**
+    ```bash
+    npm run dev
+    ```
+    The frontend will start on [http://localhost:8080](http://localhost:8080) (see your terminal for the exact port).
+
+---
+
+### 4. Usage
+
+- Open your browser and go to [http://localhost:8080](http://localhost:8080).
+- Type your question in the provided input box.
+- Press "Get Answer" to see the solution fetched from Wolfram Alpha.
+
+---
+
+### 5. Notes
+
+- The frontend is configured (via `vite.config.ts`) to proxy API requests to the Flask backend, so no CORS issues will occur during local development.
+- Ensure both the frontend and backend are running simultaneously for the application to function.
+
+---
+
+## Troubleshooting
+
+- **CORS or Network Errors:** Make sure both servers are running and the ports match those in your configuration files.
+- **Wolfram Alpha API errors:** Check your internet connection and ensure the API key in `app.py` is valid.
+- **Dependency issues:** Ensure you are using compatible versions of Python and Node.js.
+
+---
+
+## License
+
+This project is for educational purposes.
+
+---
+
+## Credits
+
+Developed by [karthiek390](https://github.com/karthiek390) and contributors.
