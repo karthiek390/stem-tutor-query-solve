@@ -1,9 +1,18 @@
 from flask import Flask, request, jsonify
+from dotenv import load_dotenv
 import requests
+import os
 
 app = Flask(__name__)
 
-WOLFRAM_APP_ID = "KEHW67-AUJHW7355A"
+# Load environment variables from .env file
+load_dotenv()
+
+WOLFRAM_APP_ID = os.getenv('WOLFRAM_APP_ID')
+
+if WOLFRAM_APP_ID is None:
+    raise ValueError("WOLFRAM_APP_ID not set in environment variables or .env file.")
+
 WOLFRAM_API_URL = "http://api.wolframalpha.com/v2/query"
 
 @app.route("/ask", methods=["POST"])
