@@ -1,8 +1,15 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 
 const StemTutor: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleStartLearning = () => {
+    navigate('/tutor');
+  };
+
   return (
     <div 
       className="min-h-screen transition-colors duration-300"
@@ -101,6 +108,7 @@ const StemTutor: React.FC = () => {
             <h3 className="text-2xl font-bold mb-4 text-center">Ready to Start Learning?</h3>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
+                onClick={handleStartLearning}
                 className="px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 style={{ 
                   backgroundColor: 'var(--theme-accent)',
