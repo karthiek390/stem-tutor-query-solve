@@ -10,6 +10,103 @@ import Loader from '@/components/ui/loader';
 import SuccessCheckmark from '@/components/ui/success-checkmark';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+// Type definitions for Wolfram API results
+interface WolframImage {
+  src: string;
+  alt?: string;
+  title?: string;
+  width?: number;
+  height?: number;
+}
+
+interface WolframSound {
+  url: string;
+  type?: string;
+}
+
+interface WolframRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  query?: string;
+  title?: string;
+  assumptions?: string;
+}
+
+interface WolframImagemap {
+  rects: WolframRect[];
+}
+
+interface WolframState {
+  name: string;
+  input: string;
+}
+
+interface WolframInfoLink {
+  url: string;
+  text?: string;
+  title?: string;
+}
+
+interface WolframInfoUnit {
+  short: string;
+  long: string;
+}
+
+interface WolframInfoImg {
+  src: string;
+  alt?: string;
+  title?: string;
+  width?: number;
+  height?: number;
+}
+
+interface WolframInfo {
+  text?: string;
+  img?: WolframInfoImg | WolframInfoImg[];
+  link?: WolframInfoLink | WolframInfoLink[];
+  links?: WolframInfoLink[];
+  units?: WolframInfoUnit[];
+}
+
+interface WolframSubpod {
+  title: string;
+  plaintext?: string;
+  img?: WolframImage;
+  imagemap?: WolframImagemap;
+  mathml?: string;
+  sound?: WolframSound;
+  wav?: WolframSound;
+  minput?: string;
+  moutput?: string;
+  cell?: string;
+  states?: WolframState[];
+}
+
+interface WolframPod {
+  title: string;
+  id: string;
+  primary?: boolean;
+  scanner?: string;
+  position?: number;
+  subpods: WolframSubpod[];
+  states?: WolframState[];
+  infos?: WolframInfo[];
+}
+
+interface WolframFullResult {
+  success: boolean;
+  error: boolean;
+  numpods: number;
+  datatypes: string;
+  pods: WolframPod[];
+  assumptions?: unknown;
+  warnings?: unknown;
+  sources?: unknown;
+  generalizations?: unknown;
+}
+
 // Utility function for math rendering using react-katex
 const renderMathContent = (content: string) => {
   // Split by LaTeX delimiters for block and inline
@@ -27,13 +124,91 @@ const renderMathContent = (content: string) => {
   });
 };
 
+// Utility to render MathML as HTML (basic fallback)
+const renderMathML = (mathml: string) => {
+  return (
+    <div
+      className="mathml-block"
+      dangerouslySetInnerHTML={{ __html: mathml }}
+      style={{ overflowX: 'auto' }}
+    />
+  );
+};
+
+// Utility to render info/links/images in extra pod info
+const renderInfos = (infos: WolframInfo[] | undefined) => {
+  if (!infos || !infos.length) return null;
+  return (
+    <div className="mt-2 mb-2">
+      {infos.map((info, idx) => (
+        <div key={idx} className="text-xs opacity-80 mb-1">
+          {info.text && <span>{info.text} </span>}
+          {info.img && !Array.isArray(info.img) && info.img.src && (
+            <img
+              src={info.img.src}
+              alt={info.img.alt || 'info'}
+              style={{ maxWidth: 200, display: 'inline-block', verticalAlign: 'middle', marginLeft: 6 }}
+            />
+          )}
+          {info.img && Array.isArray(info.img) &&
+            info.img.map((img, j) =>
+              img.src ? (
+                <img
+                  key={j}
+                  src={img.src}
+                  alt={img.alt || 'info'}
+                  style={{ maxWidth: 200, display: 'inline-block', verticalAlign: 'middle', marginLeft: 6 }}
+                />
+              ) : null
+            )}
+          {info.link && !Array.isArray(info.link) && (
+            <a
+              href={info.link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline ml-1"
+            >
+              {info.link.text || info.link.url}
+            </a>
+          )}
+          {info.link && Array.isArray(info.link) &&
+            info.link.map((l, j) =>
+              <a
+                key={j}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline ml-1"
+              >
+                {l.text || l.url}
+              </a>
+            )}
+          {Array.isArray(info.links) &&
+            info.links.map((l, j) => (
+              <a
+                key={j}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline ml-1"
+              >
+                {l.text || l.url}
+              </a>
+            ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const StemTutorPage: React.FC = () => {
   const navigate = useNavigate();
   const [question, setQuestion] = useState<string>('');
-  const [mode, setMode] = useState<string>(''); // Let user choose mode; don't default to "llm"
+  const [mode, setMode] = useState<string>(''); // Let user choose mode
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [result, setResult] = useState<string>(''); // For text answer
-  const [imageUrl, setImageUrl] = useState<string | null>(null); // For image answer
+  // Use string for short/llm/spoken, WolframFullResult for full
+  const [result, setResult] = useState<string | WolframFullResult | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string>(''); // For error
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -45,7 +220,7 @@ const StemTutorPage: React.FC = () => {
 
     setIsLoading(true);
     setError('');
-    setResult('');
+    setResult(null);
     setImageUrl(null);
 
     try {
@@ -79,11 +254,15 @@ const StemTutorPage: React.FC = () => {
           query: question.trim(),
           mode: mode
         });
-        setResult(response.data.answer || 'No answer received from Wolfram API');
+        setResult(response.data.answer || response.data || 'No answer received from Wolfram API');
       }
       setShowSuccess(true);
-    } catch (err: any) {
-      if (mode === 'simple' && err.response && err.response.data) {
+    } catch (err: unknown) {
+      if (
+        mode === 'simple' &&
+        (err as { response?: { data?: Blob } }).response &&
+        (err as { response: { data: Blob } }).response.data
+      ) {
         const reader = new FileReader();
         reader.onload = () => {
           if (typeof reader.result === 'string') {
@@ -92,9 +271,12 @@ const StemTutorPage: React.FC = () => {
             setError('Failed to get answer. Please try again.');
           }
         };
-        reader.readAsText(err.response.data);
+        reader.readAsText((err as { response: { data: Blob } }).response.data);
       } else {
-        setError(err.response?.data?.error || 'Failed to get answer. Please try again.');
+        setError(
+          (err as { response?: { data?: { error?: string } } }).response?.data?.error ||
+            'Failed to get answer. Please try again.'
+        );
       }
     } finally {
       setIsLoading(false);
@@ -109,6 +291,128 @@ const StemTutorPage: React.FC = () => {
     if (e.key === 'Enter' && e.ctrlKey) {
       handleGetAnswer();
     }
+  };
+
+  // Render pods and subpods for "full" mode
+  const renderPods = () => {
+    if (!result || typeof result === 'string' || !('pods' in result)) return null;
+
+    return (
+      <div>
+        {result.pods.map((pod, i) => (
+          <div key={pod.id} className="mb-6">
+            <div className="font-semibold text-lg mb-2 flex items-center gap-2">
+              {pod.primary && <span className="text-green-600">★</span>}
+              {pod.title}
+            </div>
+            {pod.infos && Array.isArray(pod.infos) && renderInfos(pod.infos)}
+
+            {pod.subpods.map((sub, j) => (
+              <div key={j} className="mb-3 ml-2">
+                {/* Plaintext */}
+                {sub.plaintext && (
+                  <div className="mb-2 prose max-w-none">
+                    {renderMathContent(sub.plaintext)}
+                  </div>
+                )}
+
+                {/* MathML */}
+                {sub.mathml && (
+                  <div className="mb-2">{renderMathML(sub.mathml)}</div>
+                )}
+
+                {/* minput */}
+                {sub.minput && (
+                  <div className="mb-1">
+                    <span className="font-mono rounded bg-gray-100 px-2 py-1 text-xs">Wolfram Language Input:</span>
+                    <pre className="whitespace-pre-wrap bg-gray-50 border rounded p-2 mt-1 mb-1">{sub.minput}</pre>
+                  </div>
+                )}
+
+                {/* moutput */}
+                {sub.moutput && (
+                  <div className="mb-1">
+                    <span className="font-mono rounded bg-gray-100 px-2 py-1 text-xs">Wolfram Language Output:</span>
+                    <pre className="whitespace-pre-wrap bg-gray-50 border rounded p-2 mt-1 mb-1">{sub.moutput}</pre>
+                  </div>
+                )}
+
+                {/* cell */}
+                {sub.cell && (
+                  <div className="mb-1">
+                    <span className="font-mono rounded bg-gray-100 px-2 py-1 text-xs">Cell:</span>
+                    <pre className="whitespace-pre-wrap bg-gray-50 border rounded p-2 mt-1 mb-1">{sub.cell}</pre>
+                  </div>
+                )}
+
+                {/* Image */}
+                {sub.img && sub.img.src && sub.img.alt !== sub.plaintext &&(
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <img
+                      src={sub.img.src}
+                      alt={sub.img.alt || 'Wolfram pod img'}
+                      style={{ maxWidth: 350, borderRadius: 8, border: '1px solid #ccc' }}
+                    />
+                  </div>
+                )}
+
+                {/* Sound */}
+                {sub.sound && sub.sound.url && (
+                  <div className="mb-2">
+                    <audio controls src={sub.sound.url}>
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                )}
+
+                {/* WAV */}
+                {sub.wav && sub.wav.url && (
+                  <div className="mb-2">
+                    <audio controls src={sub.wav.url}>
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                )}
+
+                {/* Imagemap */}
+                {sub.imagemap && sub.imagemap.rects && Array.isArray(sub.imagemap.rects) && sub.img && sub.img.src && (
+                  <div className="mb-2">
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img
+                        src={sub.img.src}
+                        alt="Imagemap"
+                        style={{ maxWidth: 350, borderRadius: 8, border: '1px solid #ccc' }}
+                        useMap={`#map${i}-${j}`}
+                      />
+                      <map name={`map${i}-${j}`}>
+                        {sub.imagemap.rects.map((rect, k) => (
+                          <area
+                            key={k}
+                            shape="rect"
+                            coords={`${rect.left},${rect.top},${rect.right},${rect.bottom}`}
+                            href={rect.query ? `/?query=${encodeURIComponent(rect.query)}` : '#'}
+                            alt={rect.title || ''}
+                            title={rect.title || ''}
+                            target="_blank"
+                          />
+                        ))}
+                      </map>
+                    </div>
+                  </div>
+                )}
+
+                {/* States */}
+                {sub.states && sub.states.length > 0 && (
+                  <div className="mb-1">
+                    <span className="text-xs opacity-70">Other states available: {sub.states.map((s) => s.name || '').join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -247,8 +551,8 @@ const StemTutorPage: React.FC = () => {
               </div>
             )}
 
-            {/* Answer Section - Text Results */}
-            {result && !isLoading && !imageUrl && (
+            {/* Answer Section - Text Results (for LLM, Short, Spoken) */}
+            {result && !isLoading && !imageUrl && (mode !== 'full') && (
               <div 
                 className="rounded-xl p-6 shadow-lg animate-fade-in"
                 style={{
@@ -260,8 +564,26 @@ const StemTutorPage: React.FC = () => {
                   📝 Answer
                 </h2>
                 <div className="prose max-w-none leading-relaxed">
-                  {renderMathContent(result)}
+                  {typeof result === 'string'
+                    ? renderMathContent(result)
+                    : renderMathContent((result as { answer?: string }).answer || JSON.stringify(result))}
                 </div>
+              </div>
+            )}
+
+            {/* Answer Section - Full Results */}
+            {mode === 'full' && result && !isLoading && (
+              <div 
+                className="rounded-xl p-6 shadow-lg animate-fade-in"
+                style={{
+                  backgroundColor: 'var(--theme-card-bg)',
+                  borderColor: 'var(--theme-border)'
+                }}
+              >
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  📝 Full Results
+                </h2>
+                {renderPods()}
               </div>
             )}
 
