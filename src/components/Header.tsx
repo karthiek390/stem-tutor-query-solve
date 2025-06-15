@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Palette, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Slider } from '@/components/ui/slider';
 
@@ -9,6 +10,10 @@ const Header: React.FC = () => {
   const { darknessLevel, setDarknessLevel } = useTheme();
   const modalRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isOnHomePage = location.pathname === '/';
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -64,6 +69,10 @@ const Header: React.FC = () => {
     }
   };
 
+  const handleHomeClick = () => {
+    navigate('/');
+  };
+
   return (
     <>
       {/* Header Bar */}
@@ -76,10 +85,25 @@ const Header: React.FC = () => {
         }}
       >
         <div className="flex items-center justify-between h-full px-6">
-          {/* App Logo/Name */}
-          <div className="flex items-center space-x-3">
-            <div className="text-2xl">🧮</div>
-            <h1 className="text-xl font-semibold">STEM Tutor</h1>
+          {/* App Logo/Name and Home Button */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <div className="text-2xl">🧮</div>
+              <h1 className="text-xl font-semibold">STEM Tutor</h1>
+            </div>
+            <button
+              onClick={handleHomeClick}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer ${
+                isOnHomePage 
+                  ? 'font-bold underline' 
+                  : 'hover:opacity-80'
+              }`}
+              style={{
+                color: 'var(--theme-text)'
+              }}
+            >
+              Home
+            </button>
           </div>
 
           {/* Theme Control Button */}
