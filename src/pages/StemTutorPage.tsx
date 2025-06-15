@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import Header from '@/components/Header';
 import AnimatedButton from '@/components/AnimatedButton';
 import PageTransition from '@/components/PageTransition';
@@ -15,42 +16,69 @@ const StemTutorPage: React.FC = () => {
   const [mode, setMode] = useState('llm');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const handleGetAnswer = async () => {
-    if (!question.trim()) return;
+    if (!question.trim() || !mode) {
+      setError('Please enter a question and select an answer mode.');
+      return;
+    }
 
     setIsLoading(true);
+    setError('');
     setAnswer('');
+    setImageUrl(null);
     
-    // Simulate API call based on selected mode
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      let responseText = '';
-      switch(mode) {
-        case 'llm':
-          responseText = `LLM API Response for: "${question}"\n\nThis is a concise summary with key insights and explanations.`;
-          break;
-        case 'full':
-          responseText = `Full Results API Response for: "${question}"\n\nStep 1: Understanding the problem\nStep 2: Breaking down the components\nStep 3: Solving systematically\nStep 4: Verification and conclusion`;
-          break;
-        case 'short_answer':
-          responseText = `Short Answer: ${question.includes('?') ? 'The answer depends on the specific context and variables involved.' : 'This requires further analysis to provide a complete response.'}`;
-          break;
-        case 'spoken_result':
-          responseText = `Spoken Result for: "${question}"\n\nHere's an explanation designed for audio output: Let me walk you through this step by step in a conversational manner...`;
-          break;
-        case 'simple':
-          responseText = `Simple API Response: Visual representation would be generated here for: "${question}"`;
-          break;
-        default:
-          responseText = `AI-generated answer for: "${question}"\n\nThis would be the detailed explanation with step-by-step solutions.`;
+      if (mode === 'simple') {
+        // For image mode, get blob and set imageUrl
+        const response = await axios.post('/ask', {
+          query: question.trim(),
+          mode: mode
+        }, { responseType: 'blob' });
+
+        // Handle error blob as text if not an image
+        const contentType = response.headers['content-type'];
+        if (contentType && contentType.startsWith('image')) {
+          const blob = new Blob([response.data], { type: contentType });
+          const url = URL.createObjectURL(blob);
+          setImageUrl(url);
+          setShowSuccess(true);
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              setError(reader.result);
+            } else {
+              setError('Failed to get image answer.');
+            }
+          };
+          reader.readAsText(response.data);
+        }
+      } else {
+        // For all other modes, expect JSON
+        const response = await axios.post('/ask', {
+          query: question.trim(),
+          mode: mode
+        });
+        setAnswer(response.data.answer || 'No answer received from Wolfram API');
+        setShowSuccess(true);
       }
-      
-      setAnswer(responseText);
-      setShowSuccess(true);
-    } catch (error) {
-      console.error('Error fetching answer:', error);
+    } catch (err: any) {
+      if (mode === 'simple' && err.response && err.response.data) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setError(reader.result);
+          } else {
+            setError('Failed to get answer. Please try again.');
+          }
+        };
+        reader.readAsText(err.response.data);
+      } else {
+        setError(err.response?.data?.error || 'Failed to get answer. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -148,6 +176,13 @@ const StemTutorPage: React.FC = () => {
                 </Select>
               </div>
               
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                  {error}
+                </div>
+              )}
+              
               <div className="flex justify-between items-center">
                 <AnimatedButton
                   onClick={handleBackToHome}
@@ -189,7 +224,7 @@ const StemTutorPage: React.FC = () => {
               </div>
             )}
 
-            {/* Answer Section */}
+            {/* Answer Section - Text Results */}
             {answer && !isLoading && (
               <div 
                 className="rounded-xl p-6 shadow-lg animate-fade-in"
@@ -205,6 +240,28 @@ const StemTutorPage: React.FC = () => {
                   <p className="whitespace-pre-wrap leading-relaxed">
                     {answer}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Answer Section - Image Results */}
+            {imageUrl && !isLoading && (
+              <div 
+                className="rounded-xl p-6 shadow-lg animate-fade-in"
+                style={{
+                  backgroundColor: 'var(--theme-card-bg)',
+                  borderColor: 'var(--theme-border)'
+                }}
+              >
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  🖼️ Visual Answer
+                </h2>
+                <div className="flex justify-center">
+                  <img 
+                    src={imageUrl} 
+                    alt="Wolfram Alpha Result" 
+                    className="max-w-full h-auto rounded-lg shadow-md"
+                  />
                 </div>
               </div>
             )}
