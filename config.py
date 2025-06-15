@@ -8,4 +8,4 @@ WOLFRAM_API_URLS = {
     "llm": "https://www.wolframalpha.com/api/v1/llm-api",
 }
 
-WOLFRAM_APPID = os.getenv("WOLFRAM_APP_ID")
+WOLFRAM_APPID = os.getenv("WOLFRAM_APPID")
