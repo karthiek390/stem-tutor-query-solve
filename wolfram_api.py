@@ -129,19 +129,29 @@ def query_full_results(
     """
     Calls the Wolfram|Alpha Full Results API and returns a structured dictionary with all available information
     for each pod and subpod: plaintext, image, imagemap, mathml, sound, wav, minput, moutput, cell, states, infos, etc.
+    Always requests all available output formats from the API.
     """
     params = {
         "appid": WOLFRAM_APPID,
         "input": question,
         "output": "JSON"
     }
+    # Always request all useful formats unless overridden
+    default_formats = [
+        "plaintext", "image", "imagemap", "mathml", "moutput", "minput",
+        "cell", "sound", "wav"
+    ]
+    if formats:
+        # Use caller-provided formats if present
+        params["format"] = ",".join(formats)
+    else:
+        params["format"] = ",".join(default_formats)
+
     # Optional parameters
     if units:
         params["units"] = units
     if timeout:
         params["timeout"] = timeout
-    if formats:
-        params["format"] = ",".join(formats)
     if includepodid:
         if isinstance(includepodid, (list, tuple)):
             for pid in includepodid:

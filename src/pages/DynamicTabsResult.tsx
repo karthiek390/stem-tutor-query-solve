@@ -1,7 +1,65 @@
 import React, { useState } from "react";
 import { InlineMath, BlockMath } from "react-katex";
+import { MathMLToLaTeX } from "mathml-to-latex"; // Correct import
 
-// Helper to render math
+type Subpod = {
+  plaintext?: string;
+  img?: { src?: string; alt?: string };
+  mathml?: string;
+  sound?: { url: string };
+  wav?: { url: string };
+  minput?: string;
+  moutput?: string;
+  cell?: string;
+};
+
+type Pod = {
+  title: string;
+  subpods: Subpod[];
+};
+
+type Props = {
+  pods: Pod[];
+};
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim() !== "";
+
+const getOutputTypes = (pods: Pod[]) => {
+  const typeSet = new Set<string>();
+  pods.forEach(pod => {
+    pod.subpods.forEach(sub => {
+      if (isNonEmptyString(sub.plaintext)) typeSet.add("Text");
+      if (sub.moutput || sub.minput || sub.mathml) typeSet.add("Typeset Math");
+      if (sub.img && sub.img.src) typeSet.add("Image");
+      if (sub.sound && sub.sound.url) typeSet.add("Sound");
+      if (sub.wav && sub.wav.url) typeSet.add("Wav");
+      if (isNonEmptyString(sub.cell)) typeSet.add("Cell");
+    });
+  });
+  return Array.from(typeSet);
+};
+
+const renderTypesetMath = (sub: Subpod) => {
+  if (sub.moutput) return <BlockMath math={sub.moutput} />;
+  if (sub.minput) return <BlockMath math={sub.minput} />;
+  if (sub.mathml) {
+    try {
+      const latex = MathMLToLaTeX.convert(sub.mathml);
+      return <BlockMath math={latex} />;
+    } catch {
+      return (
+        <div
+          className="mathml-block"
+          dangerouslySetInnerHTML={{ __html: sub.mathml }}
+          style={{ overflowX: "auto" }}
+        />
+      );
+    }
+  }
+  return null;
+};
+
 const renderMathContent = (content: string) => {
   const parts = content.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/);
   return parts.map((part, index) => {
@@ -17,62 +75,35 @@ const renderMathContent = (content: string) => {
   });
 };
 
-type Subpod = {
-  plaintext?: string;
-  img?: { src?: string; alt?: string };
-  mathml?: string;
-  sound?: { url: string };
-  wav?: { url: string };
-  minput?: string;
-  moutput?: string;
-  cell?: string;
-  // ... add other types as needed
-};
-
-type Pod = {
-  title: string;
-  subpods: Subpod[];
-  // ... add other pod props as needed
-};
-
-type Props = {
-  pods: Pod[];
-};
-
-// Helper to collect all types present
-const getOutputTypes = (pods: Pod[]) => {
-  const typeSet = new Set<string>();
-  pods.forEach(pod => {
-    pod.subpods.forEach(sub => {
-      if (sub.plaintext) typeSet.add("Text");
-      if (sub.img && sub.img.src) typeSet.add("Image");
-      if (sub.mathml) typeSet.add("MathML");
-      if (sub.sound && sub.sound.url) typeSet.add("Sound");
-      if (sub.wav && sub.wav.url) typeSet.add("Wav");
-      if (sub.minput) typeSet.add("Wolfram Input");
-      if (sub.moutput) typeSet.add("Wolfram Output");
-      if (sub.cell) typeSet.add("Cell");
-      // Add more as needed
-    });
-  });
-  return Array.from(typeSet);
-};
-
 const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
   const types = getOutputTypes(pods);
   const [activeTab, setActiveTab] = useState<string>(types[0] || "");
 
-  // For each tab, filter only subpods with that type
+  if (!types.length) {
+    return <div>No results available.</div>;
+  }
+
   const getContent = () => {
     switch (activeTab) {
       case "Text":
         return pods.map((pod, i) =>
           pod.subpods
-            .filter(sub => sub.plaintext)
+            .filter(sub => isNonEmptyString(sub.plaintext))
             .map((sub, j) => (
               <div key={`${i}-${j}`} className="mb-4">
                 <strong>{pod.title}</strong>
                 <div>{renderMathContent(sub.plaintext || "")}</div>
+              </div>
+            ))
+        );
+      case "Typeset Math":
+        return pods.map((pod, i) =>
+          pod.subpods
+            .filter(sub => sub.moutput || sub.minput || sub.mathml)
+            .map((sub, j) => (
+              <div key={`${i}-${j}`} className="mb-4">
+                <strong>{pod.title}</strong>
+                <div>{renderTypesetMath(sub)}</div>
               </div>
             ))
         );
@@ -84,17 +115,6 @@ const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
               <div key={`${i}-${j}`} className="mb-4">
                 <strong>{pod.title}</strong>
                 <img src={sub.img!.src} alt={sub.img!.alt || "Wolfram Image"} style={{ maxWidth: 350 }} />
-              </div>
-            ))
-        );
-      case "MathML":
-        return pods.map((pod, i) =>
-          pod.subpods
-            .filter(sub => sub.mathml)
-            .map((sub, j) => (
-              <div key={`${i}-${j}`} className="mb-4">
-                <strong>{pod.title}</strong>
-                <div dangerouslySetInnerHTML={{ __html: sub.mathml! }} />
               </div>
             ))
         );
@@ -120,32 +140,10 @@ const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
               </div>
             ))
         );
-      case "Wolfram Input":
-        return pods.map((pod, i) =>
+      case "Cell": {
+        const cellPods = pods.flatMap((pod, i) =>
           pod.subpods
-            .filter(sub => sub.minput)
-            .map((sub, j) => (
-              <div key={`${i}-${j}`} className="mb-4">
-                <strong>{pod.title}</strong>
-                <pre>{sub.minput}</pre>
-              </div>
-            ))
-        );
-      case "Wolfram Output":
-        return pods.map((pod, i) =>
-          pod.subpods
-            .filter(sub => sub.moutput)
-            .map((sub, j) => (
-              <div key={`${i}-${j}`} className="mb-4">
-                <strong>{pod.title}</strong>
-                <pre>{sub.moutput}</pre>
-              </div>
-            ))
-        );
-      case "Cell":
-        return pods.map((pod, i) =>
-          pod.subpods
-            .filter(sub => sub.cell)
+            .filter(sub => isNonEmptyString(sub.cell))
             .map((sub, j) => (
               <div key={`${i}-${j}`} className="mb-4">
                 <strong>{pod.title}</strong>
@@ -153,6 +151,8 @@ const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
               </div>
             ))
         );
+        return cellPods.length > 0 ? cellPods : <div>No cell data available.</div>;
+      }
       default:
         return <div>No data</div>;
     }
@@ -166,6 +166,7 @@ const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
             key={type}
             className={`px-4 py-2 mr-2 border-b-2 ${activeTab === type ? "border-blue-600 font-bold" : "border-transparent"}`}
             onClick={() => setActiveTab(type)}
+            type="button"
           >
             {type}
           </button>
