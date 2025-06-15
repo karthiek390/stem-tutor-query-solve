@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, BookOpen, Calculator } from 'lucide-react';
+import ThemeControlBar from '@/components/ThemeControlBar';
 
 const StemTutor: React.FC = () => {
   const [query, setQuery] = useState<string>('');
@@ -106,7 +107,16 @@ const StemTutor: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
+    <div 
+      className="min-h-screen py-8 transition-colors duration-300"
+      style={{ 
+        backgroundColor: 'var(--theme-bg)',
+        color: 'var(--theme-text)'
+      }}
+    >
+      {/* Theme Control Bar */}
+      <ThemeControlBar />
+
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header Section */}
         <div className="text-center mb-12">
@@ -114,20 +124,32 @@ const StemTutor: React.FC = () => {
             <div className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full">
               <Calculator className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-4xl font-bold text-gray-900">Wolfram STEM Tutor</h1>
+            <h1 className="text-4xl font-bold" style={{ color: 'var(--theme-text)' }}>
+              Wolfram STEM Tutor
+            </h1>
           </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--theme-text-muted)' }}>
             Get step-by-step solutions to your math and science questions using Wolfram&apos;s powerful computational engine
           </p>
         </div>
 
         {/* Main Input Card */}
-        <Card className="mb-8 shadow-lg border-0 bg-white/80 backdrop-blur">
+        <Card 
+          className="mb-8 shadow-lg border-0 backdrop-blur transition-colors duration-300"
+          style={{
+            backgroundColor: 'var(--theme-card-bg)',
+            borderColor: 'var(--theme-border)'
+          }}
+        >
           <CardContent className="p-8">
             {/* Input Section */}
             <div className="space-y-6">
               <div>
-                <label htmlFor="question" className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-3">
+                <label 
+                  htmlFor="question" 
+                  className="flex items-center gap-2 text-lg font-semibold mb-3"
+                  style={{ color: 'var(--theme-text)' }}
+                >
                   <BookOpen className="w-5 h-5" />
                   Ask your question
                 </label>
@@ -137,23 +159,42 @@ const StemTutor: React.FC = () => {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  className="min-h-[120px] text-lg resize-none border-2 border-gray-200 focus:border-blue-500 transition-colors"
+                  className="min-h-[120px] text-lg resize-none border-2 transition-colors focus:border-blue-500"
+                  style={{
+                    backgroundColor: 'var(--theme-bg)',
+                    borderColor: 'var(--theme-border)',
+                    color: 'var(--theme-text)'
+                  }}
                 />
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm mt-2" style={{ color: 'var(--theme-text-muted)' }}>
                   Tip: Press Ctrl+Enter to submit quickly
                 </p>
               </div>
 
               {/* Dropdown */}
               <div>
-                <label className="block text-lg font-semibold text-gray-700 mb-3">
+                <label className="block text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>
                   Choose answer mode
                 </label>
                 <Select value={mode} onValueChange={setMode}>
-                  <SelectTrigger className="text-lg h-12 border-2 border-gray-200 focus:border-blue-500">
+                  <SelectTrigger 
+                    className="text-lg h-12 border-2 transition-colors focus:border-blue-500"
+                    style={{
+                      backgroundColor: 'var(--theme-bg)',
+                      borderColor: 'var(--theme-border)',
+                      color: 'var(--theme-text)'
+                    }}
+                  >
                     <SelectValue placeholder="Select how you want your answer" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-2 border-gray-200">
+                  <SelectContent 
+                    className="border-2"
+                    style={{
+                      backgroundColor: 'var(--theme-card-bg)',
+                      borderColor: 'var(--theme-border)',
+                      color: 'var(--theme-text)'
+                    }}
+                  >
                     <SelectItem value="llm" className="text-lg py-3">
                       LLM API (short summary)
                     </SelectItem>
@@ -194,15 +235,25 @@ const StemTutor: React.FC = () => {
 
         {/* Response Display Section */}
         {(result || imageUrl || error || isLoading) && (
-          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
+          <Card 
+            className="shadow-lg border-0 backdrop-blur transition-colors duration-300"
+            style={{
+              backgroundColor: 'var(--theme-card-bg)',
+              borderColor: 'var(--theme-border)'
+            }}
+          >
             <CardContent className="p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Answer</h2>
+              <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--theme-text)' }}>
+                Answer
+              </h2>
 
               {isLoading && (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-lg text-gray-600">Fetching answer from Wolfram...</p>
+                    <p className="text-lg" style={{ color: 'var(--theme-text-muted)' }}>
+                      Fetching answer from Wolfram...
+                    </p>
                   </div>
                 </div>
               )}
@@ -239,7 +290,7 @@ const StemTutor: React.FC = () => {
               {result && !isLoading && !imageUrl && (
                 <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-lg">
                   <div className="prose max-w-none">
-                    <div className="text-gray-800 leading-relaxed">
+                    <div className="leading-relaxed" style={{ color: 'var(--theme-text)' }}>
                       {renderMathContent(result)}
                     </div>
                   </div>
@@ -251,8 +302,10 @@ const StemTutor: React.FC = () => {
 
         {/* Demo Instructions */}
         <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm">
-            Demo interface for Wolfram STEM Tutor • Backend endpoint: <code className="bg-gray-100 px-2 py-1 rounded">/ask</code>
+          <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+            Demo interface for Wolfram STEM Tutor • Backend endpoint: <code className="bg-gray-100 px-2 py-1 rounded">
+              /ask
+            </code>
           </p>
         </div>
       </div>
