@@ -8,6 +8,7 @@ import AnimatedButton from '@/components/AnimatedButton';
 import PageTransition from '@/components/PageTransition';
 import Loader from '@/components/ui/loader';
 import SuccessCheckmark from '@/components/ui/success-checkmark';
+import DynamicTabsResult from "./DynamicTabsResult";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Type definitions for Wolfram API results
@@ -572,7 +573,7 @@ const StemTutorPage: React.FC = () => {
             )}
 
             {/* Answer Section - Full Results */}
-            {mode === 'full' && result && !isLoading && (
+            {mode === 'full' && result && !isLoading && 'pods' in result && (
               <div 
                 className="rounded-xl p-6 shadow-lg animate-fade-in"
                 style={{
@@ -583,7 +584,7 @@ const StemTutorPage: React.FC = () => {
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                   📝 Full Results
                 </h2>
-                {renderPods()}
+                <DynamicTabsResult pods={result.pods} />
               </div>
             )}
 
