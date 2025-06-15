@@ -573,7 +573,7 @@ const StemTutorPage: React.FC = () => {
             )}
 
             {/* Answer Section - Full Results */}
-            {mode === 'full' && result && !isLoading && 'pods' in result && (
+            {mode === 'full' && result && !isLoading && typeof result === "object" && "pods" in result && (
               <div 
                 className="rounded-xl p-6 shadow-lg animate-fade-in"
                 style={{
