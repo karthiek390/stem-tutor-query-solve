@@ -117,20 +117,49 @@ def query_simple_api(
         raise WolframAPIError(f"Unexpected error: {response.status_code} - {response.text}")
 
 
-def query_full_results(question, units=None, timeout=None):
+def query_full_results(
+    question,
+    units=None,
+    timeout=None,
+    formats=None,
+    includepodid=None,
+    excludepodid=None,
+    podstate=None
+):
     """
-    Calls the Wolfram|Alpha Full Results API and returns a plain-text summary.
-    You can expand this to return more detailed or formatted results.
+    Calls the Wolfram|Alpha Full Results API and returns a structured dictionary with all available information
+    for each pod and subpod: plaintext, image, imagemap, mathml, sound, wav, minput, moutput, cell, states, infos, etc.
     """
     params = {
         "appid": WOLFRAM_APPID,
         "input": question,
         "output": "JSON"
     }
+    # Optional parameters
     if units:
         params["units"] = units
     if timeout:
         params["timeout"] = timeout
+    if formats:
+        params["format"] = ",".join(formats)
+    if includepodid:
+        if isinstance(includepodid, (list, tuple)):
+            for pid in includepodid:
+                params.setdefault("includepodid", []).append(pid)
+        else:
+            params["includepodid"] = includepodid
+    if excludepodid:
+        if isinstance(excludepodid, (list, tuple)):
+            for pid in excludepodid:
+                params.setdefault("excludepodid", []).append(pid)
+        else:
+            params["excludepodid"] = excludepodid
+    if podstate:
+        if isinstance(podstate, (list, tuple)):
+            for ps in podstate:
+                params.setdefault("podstate", []).append(ps)
+        else:
+            params["podstate"] = podstate
 
     url = WOLFRAM_API_URLS["full_results"]
     response = requests.get(url, params=params)
@@ -139,17 +168,55 @@ def query_full_results(question, units=None, timeout=None):
 
     data = response.json()
     try:
-        pods = data["queryresult"]["pods"]
-        # Concatenate all pod plaintexts
-        result_texts = []
+        queryresult = data["queryresult"]
+        if not queryresult.get("success", False):
+            raise WolframAPIError("Query not understood or no results found.")
+
+        pods = queryresult.get("pods", [])
+        results = []
+
         for pod in pods:
+            pod_info = {
+                "title": pod.get("title"),
+                "id": pod.get("id"),
+                "primary": pod.get("primary", False),
+                "scanner": pod.get("scanner"),
+                "position": pod.get("position"),
+                "subpods": [],
+                "states": pod.get("states", []),
+                "infos": pod.get("infos", []),
+            }
             for sub in pod.get("subpods", []):
-                text = sub.get("plaintext")
-                if text:
-                    result_texts.append(f"**{pod.get('title','')}**:\n{text}")
-        if not result_texts:
-            raise WolframAPIError("No results found in Full Results API response.")
-        return "\n\n".join(result_texts)
+                subpod_info = {
+                    "title": sub.get("title", ""),
+                    "plaintext": sub.get("plaintext"),
+                    "img": sub.get("img", {}),
+                    "imagemap": sub.get("imagemap", {}),
+                    "mathml": sub.get("mathml"),
+                    "sound": sub.get("sound", {}),
+                    "wav": sub.get("wav", {}),
+                    "minput": sub.get("minput"),
+                    "moutput": sub.get("moutput"),
+                    "cell": sub.get("cell"),
+                    "states": sub.get("states", []),
+                }
+                pod_info["subpods"].append(subpod_info)
+            results.append(pod_info)
+
+        # Include assumptions, warnings, sources, and generalizations if present
+        extra = {}
+        for key in ("assumptions", "warnings", "sources", "generalizations"):
+            if key in queryresult:
+                extra[key] = queryresult[key]
+
+        return {
+            "success": queryresult.get("success", False),
+            "error": queryresult.get("error", False),
+            "numpods": queryresult.get("numpods", 0),
+            "datatypes": queryresult.get("datatypes", ""),
+            "pods": results,
+            **extra
+        }
     except Exception as e:
         raise WolframAPIError(f"Failed to parse Full Results API response: {e}")
 
