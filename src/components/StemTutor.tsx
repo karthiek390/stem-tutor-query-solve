@@ -1,7 +1,5 @@
-
 import React, { useState } from 'react';
 import axios from 'axios';
-import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 import { Button } from '@/components/ui/button';
@@ -10,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, BookOpen, Calculator } from 'lucide-react';
 
-const StemTutor = () => {
-  const [query, setQuery] = useState('');
-  const [mode, setMode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState('');
-  const [error, setError] = useState('');
+const StemTutor: React.FC = () => {
+  const [query, setQuery] = useState<string>('');
+  const [mode, setMode] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [result, setResult] = useState<string>('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
 
   const handleSubmit = async () => {
     if (!query.trim() || !mode) {
@@ -26,26 +25,64 @@ const StemTutor = () => {
     setIsLoading(true);
     setError('');
     setResult('');
+    setImageUrl(null);
 
     try {
       console.log('Sending request to /ask with:', { query, mode });
-      
-      const response = await axios.post('/ask', {
-        query: query.trim(),
-        mode: mode
-      });
 
-      console.log('Response received:', response.data);
-      setResult(response.data.answer || 'No answer received from Wolfram API');
+      if (mode === 'simple') {
+        // For image mode, get blob and set imageUrl
+        const response = await axios.post('/ask', {
+          query: query.trim(),
+          mode: mode
+        }, { responseType: 'blob' });
+
+        // Handle error blob as text if not an image
+        const contentType = response.headers['content-type'];
+        if (contentType && contentType.startsWith('image')) {
+          const blob = new Blob([response.data], { type: contentType });
+          const url = URL.createObjectURL(blob);
+          setImageUrl(url);
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              setError(reader.result);
+            } else {
+              setError('Failed to get image answer.');
+            }
+          };
+          reader.readAsText(response.data);
+        }
+      } else {
+        // For all other modes, expect JSON
+        const response = await axios.post('/ask', {
+          query: query.trim(),
+          mode: mode
+        });
+        setResult(response.data.answer || 'No answer received from Wolfram API');
+      }
     } catch (err: any) {
       console.error('Error calling backend:', err);
-      setError(err.response?.data?.error || 'Failed to get answer. Please try again.');
+      if (mode === 'simple' && err.response && err.response.data) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setError(reader.result);
+          } else {
+            setError('Failed to get answer. Please try again.');
+          }
+        };
+        reader.readAsText(err.response.data);
+      } else {
+        setError(err.response?.data?.error || 'Failed to get answer. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && e.ctrlKey) {
       handleSubmit();
     }
@@ -54,7 +91,7 @@ const StemTutor = () => {
   const renderMathContent = (content: string) => {
     // Simple LaTeX detection and rendering
     const parts = content.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/);
-    
+
     return parts.map((part, index) => {
       if (part.startsWith('$$') && part.endsWith('$$')) {
         const latex = part.slice(2, -2);
@@ -80,7 +117,7 @@ const StemTutor = () => {
             <h1 className="text-4xl font-bold text-gray-900">Wolfram STEM Tutor</h1>
           </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Get step-by-step solutions to your math and science questions using Wolfram's powerful computational engine
+            Get step-by-step solutions to your math and science questions using Wolfram&apos;s powerful computational engine
           </p>
         </div>
 
@@ -123,6 +160,15 @@ const StemTutor = () => {
                     <SelectItem value="full" className="text-lg py-3">
                       Full Results API (step-by-step)
                     </SelectItem>
+                    <SelectItem value="short_answer" className="text-lg py-3">
+                      Short Answers API (one-line response)
+                    </SelectItem>
+                    <SelectItem value="spoken_result" className="text-lg py-3">
+                      Spoken Results API (for conversational/text-to-speech)
+                    </SelectItem>
+                    <SelectItem value="simple" className="text-lg py-3">
+                      Simple API (image)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -147,11 +193,11 @@ const StemTutor = () => {
         </Card>
 
         {/* Response Display Section */}
-        {(result || error || isLoading) && (
+        {(result || imageUrl || error || isLoading) && (
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
             <CardContent className="p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Answer</h2>
-              
+
               {isLoading && (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
@@ -177,7 +223,20 @@ const StemTutor = () => {
                 </div>
               )}
 
-              {result && !isLoading && (
+              {/* Image result for Simple API */}
+              {imageUrl && !isLoading && (
+                <div className="flex flex-col items-center">
+                  <img
+                    src={imageUrl}
+                    alt="Wolfram|Alpha Simple API result"
+                    className="rounded shadow max-w-full"
+                    style={{ background: "#fff" }}
+                  />
+                </div>
+              )}
+
+              {/* Text answer for other modes */}
+              {result && !isLoading && !imageUrl && (
                 <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-lg">
                   <div className="prose max-w-none">
                     <div className="text-gray-800 leading-relaxed">
