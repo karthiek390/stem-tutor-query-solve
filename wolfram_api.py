@@ -116,6 +116,121 @@ def query_simple_api(
     else:
         raise WolframAPIError(f"Unexpected error: {response.status_code} - {response.text}")
 
+def query_step_by_step_results(
+    question,
+    units=None,
+    timeout=None,
+    formats=None,
+    podstates=None,
+    includepodid=None,
+    excludepodid=None
+):
+    """
+    Calls the Wolfram|Alpha Step-by-Step API, always requesting all known step-by-step podstates.
+    Returns all available pods and subpods; prefer pods with possible intermediate steps.
+    """
+    params = {
+        "appid": WOLFRAM_APPID,
+        "input": question,
+        "output": "JSON"
+    }
+    default_formats = [
+        "plaintext", "image", "imagemap", "mathml", "moutput", "minput",
+        "cell", "sound", "wav"
+    ]
+    if formats:
+        params["format"] = ",".join(formats)
+    else:
+        params["format"] = ",".join(default_formats)
+
+    # Always add both podstates for best chance of getting steps!
+    # Accept extra podstates from caller if present
+    step_podstates = ["Result__Step-by-step solution", "Show all steps"]
+    if podstates:
+        if isinstance(podstates, (list, tuple)):
+            step_podstates += [ps for ps in podstates if ps not in step_podstates]
+        else:
+            step_podstates.append(podstates)
+    # Add all as repeated podstate params
+    for ps in step_podstates:
+        params.setdefault("podstate", []).append(ps)
+
+    if units:
+        params["units"] = units
+    if timeout:
+        params["timeout"] = timeout
+    if includepodid:
+        if isinstance(includepodid, (list, tuple)):
+            for pid in includepodid:
+                params.setdefault("includepodid", []).append(pid)
+        else:
+            params["includepodid"] = includepodid
+    if excludepodid:
+        if isinstance(excludepodid, (list, tuple)):
+            for pid in excludepodid:
+                params.setdefault("excludepodid", []).append(pid)
+        else:
+            params["excludepodid"] = excludepodid
+
+    url = WOLFRAM_API_URLS["full_results"]
+    response = requests.get(url, params=params)
+    if response.status_code != 200:
+        raise WolframAPIError(f"Step-by-Step API error: {response.status_code} - {response.text}")
+
+    data = response.json()
+    try:
+        queryresult = data["queryresult"]
+        if not queryresult.get("success", False):
+            raise WolframAPIError("Query not understood or no step-by-step results found.")
+
+        pods = queryresult.get("pods", [])
+        results = []
+
+        for pod in pods:
+            pod_info = {
+                "title": pod.get("title"),
+                "id": pod.get("id"),
+                "primary": pod.get("primary", False),
+                "scanner": pod.get("scanner"),
+                "position": pod.get("position"),
+                "subpods": [],
+                "states": pod.get("states", []),
+                "infos": pod.get("infos", []),
+            }
+            for sub in pod.get("subpods", []):
+                subpod_info = {
+                    "title": sub.get("title", ""),
+                    "plaintext": sub.get("plaintext"),
+                    "img": sub.get("img", {}),
+                    "imagemap": sub.get("imagemap", {}),
+                    "mathml": sub.get("mathml"),
+                    "sound": sub.get("sound", {}),
+                    "wav": sub.get("wav", {}),
+                    "minput": sub.get("minput"),
+                    "moutput": sub.get("moutput"),
+                    "cell": sub.get("cell"),
+                    "states": sub.get("states", []),
+                }
+                pod_info["subpods"].append(subpod_info)
+            results.append(pod_info)
+
+        # Include assumptions, warnings, sources, and generalizations if present
+        extra = {}
+        for key in ("assumptions", "warnings", "sources", "generalizations"):
+            if key in queryresult:
+                extra[key] = queryresult[key]
+
+        return {
+            "success": queryresult.get("success", False),
+            "error": queryresult.get("error", False),
+            "numpods": queryresult.get("numpods", 0),
+            "datatypes": queryresult.get("datatypes", ""),
+            "pods": results,
+            **extra
+        }
+    except Exception as e:
+        raise WolframAPIError(f"Failed to parse Step-by-Step API response: {e}")
+
 
 def query_full_results(
     question,

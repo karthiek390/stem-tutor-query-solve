@@ -2,6 +2,7 @@ import os
 
 WOLFRAM_API_URLS = {
     "full_results": "http://api.wolframalpha.com/v2/query",
+    "step_by_step": "http://api.wolframalpha.com/v2/query",   # Optional alias, not required
     "short_answers": "http://api.wolframalpha.com/v1/result",
     "spoken_results": "http://api.wolframalpha.com/v1/spoken",
     "simple": "http://api.wolframalpha.com/v1/simple",
