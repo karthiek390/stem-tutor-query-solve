@@ -489,7 +489,10 @@ const StemTutorPage: React.FC = () => {
                       🤖 LLM API (short summary)
                     </SelectItem>
                     <SelectItem value="full" className="text-lg py-3 transition-colors duration-150 hover:bg-blue-50">
-                      📝 Full Results API (step-by-step)
+                      📝 Full Results API (All necessary details)
+                    </SelectItem>
+                    <SelectItem value="step_by_step" className="text-lg py-3 transition-colors duration-150 hover:bg-blue-50">
+                      🪜 Step-by-Step API (detailed guided steps)
                     </SelectItem>
                     <SelectItem value="short_answer" className="text-lg py-3 transition-colors duration-150 hover:bg-blue-50">
                       ⚡ Short Answers API (one-line response)
@@ -586,6 +589,25 @@ const StemTutorPage: React.FC = () => {
                 </h2>
                 <DynamicTabsResult pods={result.pods} />
               </div>
+            )}
+
+            {/* Answer Section - Step-by-Step Results */}
+            {mode === 'step_by_step' && result && !isLoading && typeof result === "object" && "pods" in result && (
+              <>
+              {console.log("Step-by-step result from backend:", result)}
+              <div 
+                className="rounded-xl p-6 shadow-lg animate-fade-in"
+                style={{
+                  backgroundColor: 'var(--theme-card-bg)',
+                  borderColor: 'var(--theme-border)'
+                }}
+              >
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  🪜 Step-by-Step Solution
+                </h2>
+                <DynamicTabsResult pods={result.pods} />
+              </div>
+              </>
             )}
 
             {/* Answer Section - Image Results */}

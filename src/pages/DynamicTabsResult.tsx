@@ -11,6 +11,7 @@ type Subpod = {
   minput?: string;
   moutput?: string;
   cell?: string;
+  title?: string;
 };
 
 type Pod = {
@@ -76,6 +77,7 @@ const renderMathContent = (content: string) => {
 };
 
 const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
+  console.log("Pods received in DynamicTabsResult:", pods);
   const types = getOutputTypes(pods);
   const [activeTab, setActiveTab] = useState<string>(types[0] || "");
 
@@ -83,9 +85,40 @@ const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
     return <div>No results available.</div>;
   }
 
+  // --- STEP-BY-STEP DISPLAY LOGIC ---
+  // Prefer to show "Possible intermediate steps" subpod (or any subpod whose title includes "step")
+  // Only applies to the "Text" tab for now
+  const getStepByStepSubpods = () => {
+    for (const pod of pods) {
+      for (const sub of pod.subpods) {
+        if (
+          sub.title &&
+          typeof sub.title === "string" &&
+          sub.title.toLowerCase().includes("step")
+        ) {
+          return [{ podTitle: pod.title, subpod: sub }];
+        }
+      }
+    }
+    return [];
+  };
+
   const getContent = () => {
     switch (activeTab) {
-      case "Text":
+      case "Text": {
+        // 1. Check for step-by-step subpod(s)
+        const stepSubpods = getStepByStepSubpods();
+        if (stepSubpods.length > 0) {
+          return stepSubpods.map(({ podTitle, subpod }, i) => (
+            <div key={`steps-${i}`} className="mb-4 bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+              <strong>
+                {podTitle} {subpod.title ? `- ${subpod.title}` : ""}
+              </strong>
+              <div style={{ whiteSpace: "pre-wrap" }}>{renderMathContent(subpod.plaintext || "")}</div>
+            </div>
+          ));
+        }
+        // 2. Fallback to all plaintext subpods
         return pods.map((pod, i) =>
           pod.subpods
             .filter(sub => isNonEmptyString(sub.plaintext))
@@ -96,6 +129,7 @@ const DynamicTabsResult: React.FC<Props> = ({ pods }) => {
               </div>
             ))
         );
+      }
       case "Typeset Math":
         return pods.map((pod, i) =>
           pod.subpods

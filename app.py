@@ -5,6 +5,7 @@ from wolfram_api import (
     query_simple_api,
     query_full_results,
     query_llm_api,
+    query_step_by_step_results,
     WolframAPIError
 )
 import io
@@ -39,6 +40,9 @@ def ask():
             )
         elif mode == "full":
             answer = query_full_results(question)
+            return jsonify({"answer": answer})
+        elif mode == "step_by_step":
+            answer = query_step_by_step_results(question)
             return jsonify({"answer": answer})
         elif mode == "llm":
             answer = query_llm_api(question)
