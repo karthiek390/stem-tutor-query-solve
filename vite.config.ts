@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       // Proxy API requests starting with /ask to Flask backend
-      '/ask': 'http://localhost:5000',
+      '/ask': 'http://127.0.0.1:5000',
     },
   },
   plugins: [
