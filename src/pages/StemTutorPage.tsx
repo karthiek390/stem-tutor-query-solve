@@ -11,7 +11,21 @@ import SuccessCheckmark from '@/components/ui/success-checkmark';
 import DynamicTabsResult from "./DynamicTabsResult";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Type definitions for Wolfram API results
+// ---- ADD: Types for user, logout, refreshUser props ----
+type UserInfo = {
+  name: string;
+  email: string;
+  picture?: string;
+  given_name?: string;
+};
+
+interface StemTutorPageProps {
+  user: UserInfo | null;
+  onLogout: () => void;
+  refreshUser: () => void;
+}
+
+// --- Wolfram API type definitions (unchanged) ---
 interface WolframImage {
   src: string;
   alt?: string;
@@ -19,12 +33,10 @@ interface WolframImage {
   width?: number;
   height?: number;
 }
-
 interface WolframSound {
   url: string;
   type?: string;
 }
-
 interface WolframRect {
   left: number;
   top: number;
@@ -34,27 +46,22 @@ interface WolframRect {
   title?: string;
   assumptions?: string;
 }
-
 interface WolframImagemap {
   rects: WolframRect[];
 }
-
 interface WolframState {
   name: string;
   input: string;
 }
-
 interface WolframInfoLink {
   url: string;
   text?: string;
   title?: string;
 }
-
 interface WolframInfoUnit {
   short: string;
   long: string;
 }
-
 interface WolframInfoImg {
   src: string;
   alt?: string;
@@ -62,7 +69,6 @@ interface WolframInfoImg {
   width?: number;
   height?: number;
 }
-
 interface WolframInfo {
   text?: string;
   img?: WolframInfoImg | WolframInfoImg[];
@@ -70,7 +76,6 @@ interface WolframInfo {
   links?: WolframInfoLink[];
   units?: WolframInfoUnit[];
 }
-
 interface WolframSubpod {
   title: string;
   plaintext?: string;
@@ -84,7 +89,6 @@ interface WolframSubpod {
   cell?: string;
   states?: WolframState[];
 }
-
 interface WolframPod {
   title: string;
   id: string;
@@ -95,7 +99,6 @@ interface WolframPod {
   states?: WolframState[];
   infos?: WolframInfo[];
 }
-
 interface WolframFullResult {
   success: boolean;
   error: boolean;
@@ -108,9 +111,8 @@ interface WolframFullResult {
   generalizations?: unknown;
 }
 
-// Utility function for math rendering using react-katex
+// Utility function for math rendering using react-katex (unchanged)
 const renderMathContent = (content: string) => {
-  // Split by LaTeX delimiters for block and inline
   const parts = content.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/);
   return parts.map((part, index) => {
     if (part.startsWith('$$') && part.endsWith('$$')) {
@@ -124,19 +126,13 @@ const renderMathContent = (content: string) => {
     }
   });
 };
-
-// Utility to render MathML as HTML (basic fallback)
-const renderMathML = (mathml: string) => {
-  return (
-    <div
-      className="mathml-block"
-      dangerouslySetInnerHTML={{ __html: mathml }}
-      style={{ overflowX: 'auto' }}
-    />
-  );
-};
-
-// Utility to render info/links/images in extra pod info
+const renderMathML = (mathml: string) => (
+  <div
+    className="mathml-block"
+    dangerouslySetInnerHTML={{ __html: mathml }}
+    style={{ overflowX: 'auto' }}
+  />
+);
 const renderInfos = (infos: WolframInfo[] | undefined) => {
   if (!infos || !infos.length) return null;
   return (
@@ -202,12 +198,12 @@ const renderInfos = (infos: WolframInfo[] | undefined) => {
   );
 };
 
-const StemTutorPage: React.FC = () => {
+// ---- Main component, now with props ----
+const StemTutorPage: React.FC<StemTutorPageProps> = ({ user, onLogout, refreshUser }) => {
   const navigate = useNavigate();
   const [question, setQuestion] = useState<string>('');
   const [mode, setMode] = useState<string>(''); // Let user choose mode
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // Use string for short/llm/spoken, WolframFullResult for full
   const [result, setResult] = useState<string | WolframFullResult | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string>(''); // For error
@@ -226,13 +222,11 @@ const StemTutorPage: React.FC = () => {
 
     try {
       if (mode === 'simple') {
-        // For image mode, get blob and set imageUrl
         const response = await axios.post('/ask', {
           query: question.trim(),
           mode: mode
         }, { responseType: 'blob' });
 
-        // Handle error blob as text if not an image
         const contentType = response.headers['content-type'];
         if (contentType && contentType.startsWith('image')) {
           const blob = new Blob([response.data], { type: contentType });
@@ -250,7 +244,6 @@ const StemTutorPage: React.FC = () => {
           reader.readAsText(response.data);
         }
       } else {
-        // For all other modes, expect JSON
         const response = await axios.post('/ask', {
           query: question.trim(),
           mode: mode
@@ -297,7 +290,6 @@ const StemTutorPage: React.FC = () => {
   // Render pods and subpods for "full" mode
   const renderPods = () => {
     if (!result || typeof result === 'string' || !('pods' in result)) return null;
-
     return (
       <div>
         {result.pods.map((pod, i) => (
@@ -307,46 +299,34 @@ const StemTutorPage: React.FC = () => {
               {pod.title}
             </div>
             {pod.infos && Array.isArray(pod.infos) && renderInfos(pod.infos)}
-
             {pod.subpods.map((sub, j) => (
               <div key={j} className="mb-3 ml-2">
-                {/* Plaintext */}
                 {sub.plaintext && (
                   <div className="mb-2 prose max-w-none">
                     {renderMathContent(sub.plaintext)}
                   </div>
                 )}
-
-                {/* MathML */}
                 {sub.mathml && (
                   <div className="mb-2">{renderMathML(sub.mathml)}</div>
                 )}
-
-                {/* minput */}
                 {sub.minput && (
                   <div className="mb-1">
                     <span className="font-mono rounded bg-gray-100 px-2 py-1 text-xs">Wolfram Language Input:</span>
                     <pre className="whitespace-pre-wrap bg-gray-50 border rounded p-2 mt-1 mb-1">{sub.minput}</pre>
                   </div>
                 )}
-
-                {/* moutput */}
                 {sub.moutput && (
                   <div className="mb-1">
                     <span className="font-mono rounded bg-gray-100 px-2 py-1 text-xs">Wolfram Language Output:</span>
                     <pre className="whitespace-pre-wrap bg-gray-50 border rounded p-2 mt-1 mb-1">{sub.moutput}</pre>
                   </div>
                 )}
-
-                {/* cell */}
                 {sub.cell && (
                   <div className="mb-1">
                     <span className="font-mono rounded bg-gray-100 px-2 py-1 text-xs">Cell:</span>
                     <pre className="whitespace-pre-wrap bg-gray-50 border rounded p-2 mt-1 mb-1">{sub.cell}</pre>
                   </div>
                 )}
-
-                {/* Image */}
                 {sub.img && sub.img.src && sub.img.alt !== sub.plaintext &&(
                   <div className="mb-2 flex flex-wrap gap-2">
                     <img
@@ -356,8 +336,6 @@ const StemTutorPage: React.FC = () => {
                     />
                   </div>
                 )}
-
-                {/* Sound */}
                 {sub.sound && sub.sound.url && (
                   <div className="mb-2">
                     <audio controls src={sub.sound.url}>
@@ -365,8 +343,6 @@ const StemTutorPage: React.FC = () => {
                     </audio>
                   </div>
                 )}
-
-                {/* WAV */}
                 {sub.wav && sub.wav.url && (
                   <div className="mb-2">
                     <audio controls src={sub.wav.url}>
@@ -374,8 +350,6 @@ const StemTutorPage: React.FC = () => {
                     </audio>
                   </div>
                 )}
-
-                {/* Imagemap */}
                 {sub.imagemap && sub.imagemap.rects && Array.isArray(sub.imagemap.rects) && sub.img && sub.img.src && (
                   <div className="mb-2">
                     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -401,8 +375,6 @@ const StemTutorPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-
-                {/* States */}
                 {sub.states && sub.states.length > 0 && (
                   <div className="mb-1">
                     <span className="text-xs opacity-70">Other states available: {sub.states.map((s) => s.name || '').join(', ')}</span>
@@ -424,7 +396,8 @@ const StemTutorPage: React.FC = () => {
         color: 'var(--theme-text)'
       }}
     >
-      <Header />
+      {/* --- PASS user and onLogout props to Header --- */}
+      <Header user={user} onLogout={onLogout} />
       <PageTransition>
         <main className="pt-20 pb-8">
           <div className="container mx-auto px-6 max-w-4xl">

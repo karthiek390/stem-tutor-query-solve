@@ -1,11 +1,22 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from './Header';
 import AnimatedButton from './AnimatedButton';
 import PageTransition from './PageTransition';
 
-const StemTutor: React.FC = () => {
+type UserInfo = {
+  name: string;
+  email: string;
+  picture?: string;
+  given_name?: string;
+};
+
+interface StemTutorProps {
+  user: UserInfo | null;
+  onLogout: () => void;
+  refreshUser: () => void;
+}
+
+const StemTutor: React.FC<StemTutorProps> = ({ user }) => {
   const navigate = useNavigate();
 
   const handleStartLearning = () => {
@@ -20,8 +31,6 @@ const StemTutor: React.FC = () => {
         color: 'var(--theme-text)'
       }}
     >
-      <Header />
-
       <PageTransition>
         <main className="pt-16">
           <div className="container mx-auto px-6 py-8">
@@ -33,11 +42,33 @@ const StemTutor: React.FC = () => {
                 borderColor: 'var(--theme-border)'
               }}
             >
-              <div className="text-center">
-                <h2 className="text-3xl font-bold mb-4">Welcome to STEM Tutor</h2>
-                <p className="text-lg mb-6" style={{ color: 'var(--theme-text-muted)' }}>
-                  Your AI-powered learning companion for Science, Technology, Engineering, and Mathematics
-                </p>
+              <div className="text-center flex flex-col items-center">
+                {/* Personalized greeting */}
+                {user ? (
+                  <>
+                    {user.picture && (
+                      <img 
+                        src={user.picture} 
+                        alt={user.name} 
+                        className="rounded-full w-20 h-20 mb-4 border-4 border-accent shadow"
+                        style={{ borderColor: 'var(--theme-accent)' }}
+                      />
+                    )}
+                    <h2 className="text-3xl font-bold mb-2">
+                      Welcome, {user.given_name || user.name}!
+                    </h2>
+                    <p className="text-lg mb-4" style={{ color: 'var(--theme-text-muted)' }}>
+                      {user.email}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-3xl font-bold mb-4">Welcome to STEM Tutor</h2>
+                    <p className="text-lg mb-6" style={{ color: 'var(--theme-text-muted)' }}>
+                      Your AI-powered learning companion for Science, Technology, Engineering, and Mathematics
+                    </p>
+                  </>
+                )}
                 <div className="flex justify-center space-x-8 text-4xl">
                   <span className="animate-bounce" style={{ animationDelay: '0s' }}>🧪</span>
                   <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>💻</span>
