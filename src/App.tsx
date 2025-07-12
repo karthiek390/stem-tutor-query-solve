@@ -9,6 +9,9 @@ import Header from "@/components/Header";
 import Index from "./pages/Index";
 import StemTutorPage from "./pages/StemTutorPage";
 import NotFound from "./pages/NotFound";
+import PracticeTestPage from "./pages/PracticeTestPage";
+import TestPage from './pages/TestPage';
+
 
 type UserInfo = {
   name: string;
@@ -29,6 +32,8 @@ const AppRoutes: React.FC<{
     <Routes>
       <Route path="/" element={<Index user={user} onLogout={onLogout} refreshUser={refreshUser} />} />
       <Route path="/tutor" element={<StemTutorPage user={user} onLogout={onLogout} refreshUser={refreshUser} />} />
+      <Route path="/practice" element={<PracticeTestPage />} />
+      <Route path="/test" element={<TestPage />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

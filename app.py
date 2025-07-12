@@ -12,6 +12,9 @@ from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 import os
 import io
+import requests
+import json
+
 
 # Load .env variables
 load_dotenv()
@@ -100,6 +103,77 @@ def userinfo():
         return jsonify({"authenticated": True, "user": session['user']})
     else:
         return jsonify({"authenticated": False}), 401
+
+
+@app.route("/wpg/topics", methods=["GET"])
+def get_wpg_topics():
+    token_url = "https://quezzio.techconsulting.wolfram.com/api/quezzio/token"
+    client_id = os.environ.get("WPG_CLIENT_ID")
+    client_secret = os.environ.get("WPG_CLIENT_SECRET")
+    realm = os.environ.get("WPG_REALM", "futurestateuniversity")
+
+    if not client_id or not client_secret:
+        return jsonify({"error": "Missing WPG credentials in environment variables"}), 500
+
+    token_payload = f'grant_type=client_credentials&auth_details={{"client_id":"{client_id}","client_secret":"{client_secret}"}}&realm={realm}'
+    token_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+    token_response = requests.post(token_url, headers=token_headers, data=token_payload)
+    if token_response.status_code != 200:
+        return jsonify({"error": "Failed to get access token"}), 502
+
+    access_token = token_response.json().get("access_token")
+    if not access_token:
+        return jsonify({"error": "No access token returned"}), 502
+
+    # Fetch topic-subject mapping
+    topics_url = "https://quezzio.techconsulting.wolfram.com/api/quezzio/wpg/metadata/topics"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.post(topics_url, headers=headers)
+
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to fetch topics", "details": response.text}), 502
+
+    return jsonify(response.json())
+
+
+@app.route("/wpg/questions", methods=["POST"])
+def get_wpg_questions():
+    data = request.get_json()
+    wpg_input = data.get("wpg_input")
+    if not wpg_input:
+        return jsonify({"error": "Missing wpg_input"}), 400
+
+    token_url = "https://quezzio.techconsulting.wolfram.com/api/quezzio/token"
+    client_id = os.environ.get("WPG_CLIENT_ID")
+    client_secret = os.environ.get("WPG_CLIENT_SECRET")
+    realm = os.environ.get("WPG_REALM", "futurestateuniversity")
+
+    token_payload = f'grant_type=client_credentials&auth_details={{"client_id":"{client_id}","client_secret":"{client_secret}"}}&realm={realm}'
+    token_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+    token_response = requests.post(token_url, headers=token_headers, data=token_payload)
+    if token_response.status_code != 200:
+        return jsonify({"error": "Failed to get access token"}), 502
+
+    access_token = token_response.json().get("access_token")
+    if not access_token:
+        return jsonify({"error": "No access token returned"}), 502
+
+    question_url = "https://quezzio.techconsulting.wolfram.com/api/quezzio/wpg/question"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    payload = {
+        "wpg_input": json.dumps(wpg_input),
+        "output_format": "MathML",
+        "show_steps_command": "true"
+    }
+
+    response = requests.post(question_url, headers=headers, data=payload)
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to fetch questions", "details": response.text}), 502
+
+    return jsonify(response.json())
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
