@@ -109,12 +109,14 @@ const StemTutor: React.FC<StemTutorProps> = ({ user }) => {
                 {
                   title: "Practice Tests",
                   description: "Prepare for exams with targeted practice",
-                  icon: "📋"
+                  icon: "📋",
+                  onClick: () => navigate('/practice')
                 }
               ].map((feature, index) => (
                 <div
                   key={index}
-                  className="rounded-lg p-6 shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 hover:-translate-y-1 animate-fade-in"
+                  onClick={feature.onClick}
+                  className={`rounded-lg p-6 shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 hover:-translate-y-1 animate-fade-in ${feature.onClick ? 'cursor-pointer' : ''}`}
                   style={{
                     backgroundColor: 'var(--theme-card-bg)',
                     borderColor: 'var(--theme-border)',
