@@ -16,15 +16,20 @@ const TestPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const selectedSubjects = JSON.parse(localStorage.getItem('selectedSubjects') || '[]');
-    const difficulty = localStorage.getItem('difficulty') || 'Beginner';
+    const configRaw = localStorage.getItem('customTestConfig');
+    if (!configRaw) return;
 
-    if (!selectedSubjects.length) return;
+    interface TopicConfig {
+    difficulty: string;
+    numQuestions: number;
+  }
+
+    const config: Record<string, TopicConfig> = JSON.parse(configRaw);
 
     const payload = {
-      wpg_input: selectedSubjects.slice(0, 1).map((subject: string) => ({
-        wpg_topic: subject,
-        wpg_instances: 10,
+      wpg_input: Object.entries(config).map(([subtopic, { difficulty, numQuestions }]) => ({
+        wpg_topic: subtopic,
+        wpg_instances: numQuestions,
         wpg_difficulty: difficulty,
         wpg_answer_type: 'Single Expression'
       }))
@@ -32,8 +37,13 @@ const TestPage: React.FC = () => {
 
     axios.post('http://localhost:5000/wpg/questions', payload)
       .then(res => {
-        setQuestions(res.data);
-        setUserAnswers(new Array(res.data.length).fill(''));
+        // Flatten if backend returns grouped by topic
+        const allQuestions: Question[] = Array.isArray(res.data)
+          ? res.data.flat()
+          : [];
+
+        setQuestions(allQuestions);
+        setUserAnswers(new Array(allQuestions.length).fill(''));
         setLoading(false);
       })
       .catch(err => {
@@ -48,42 +58,47 @@ const TestPage: React.FC = () => {
     setUserAnswers(updated);
   };
 
-  if (loading) return <div className="p-6">Loading questions...</div>;
-  if (!questions.length) return <div className="p-6">No questions available.</div>;
+  if (loading) return <div className="p-6 text-lg font-medium">Loading questions...</div>;
+  if (!questions.length) return <div className="p-6 text-lg font-medium">No questions available.</div>;
 
   const q = questions[currentIndex];
 
   return (
-    <div className="min-h-screen p-6">
-      <h1 className="text-2xl font-bold mb-4">Question {currentIndex + 1} of {questions.length}</h1>
+    <div className="flex items-center justify-center h-screen bg-white text-black">
+      <div className="w-full max-w-2xl p-6 border rounded shadow-md bg-gray-50">
+        <h1 className="text-xl font-bold mb-4 text-center">
+          Question {currentIndex + 1} / {questions.length}
+        </h1>
 
-      <div className="mb-4 p-4 border rounded bg-gray-50">
-        <strong>Command:</strong> <code>{q.wpg_instance_steps_command}</code>
-      </div>
+        <div className="mb-4 p-4 border rounded bg-white shadow">
+          <strong>Command:</strong>{' '}
+          <code className="text-blue-700">{q.wpg_instance_steps_command}</code>
+        </div>
 
-      <input
-        className="w-full p-2 border rounded mb-4"
-        placeholder="Enter your answer here..."
-        value={userAnswers[currentIndex] || ''}
-        onChange={(e) => handleAnswerChange(e.target.value)}
-      />
+        <input
+          className="w-full p-2 border rounded mb-6"
+          placeholder="Enter your answer here..."
+          value={userAnswers[currentIndex] || ''}
+          onChange={(e) => handleAnswerChange(e.target.value)}
+        />
 
-      <div className="flex justify-between">
-        <button
-          className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-          onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
-          disabled={currentIndex === 0}
-        >
-          ⬅️ Previous
-        </button>
+        <div className="flex justify-between">
+          <button
+            className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 disabled:opacity-50"
+            onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+            disabled={currentIndex === 0}
+          >
+            ⬅️ Previous
+          </button>
 
-        <button
-          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-          onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))}
-          disabled={currentIndex === questions.length - 1}
-        >
-          Next ➡️
-        </button>
+          <button
+            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))}
+            disabled={currentIndex === questions.length - 1}
+          >
+            Next ➡️
+          </button>
+        </div>
       </div>
     </div>
   );
