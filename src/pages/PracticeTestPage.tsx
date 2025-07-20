@@ -3,11 +3,17 @@ import axios from 'axios';
 
 type WPGData = Record<string, string[]>;
 
+type SelectionConfig = {
+  [subtopic: string]: {
+    difficulty: string;
+    numQuestions: number;
+  };
+};
+
 const PracticeTestPage: React.FC = () => {
   const [topics, setTopics] = useState<WPGData>({});
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
-  const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(new Set());
-  const [difficulty, setDifficulty] = useState('Beginner');
+  const [selectionMap, setSelectionMap] = useState<SelectionConfig>({});
 
   useEffect(() => {
     axios.get('http://localhost:5000/wpg/topics')
@@ -16,33 +22,39 @@ const PracticeTestPage: React.FC = () => {
   }, []);
 
   const toggleSubject = (subject: string) => {
-    setSelectedSubjects((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(subject)) {
-        updated.delete(subject);
+    setSelectionMap(prev => {
+      const updated = { ...prev };
+      if (updated[subject]) {
+        delete updated[subject];
       } else {
-        updated.add(subject);
+        updated[subject] = { difficulty: 'Beginner', numQuestions: 5 };
       }
       return updated;
     });
   };
 
+  const updateSelectionField = (
+    subject: string,
+    field: 'difficulty' | 'numQuestions',
+    value: string | number
+  ) => {
+    setSelectionMap(prev => ({
+      ...prev,
+      [subject]: {
+        ...prev[subject],
+        [field]: field === 'numQuestions' ? parseInt(value as string) : value
+      }
+    }));
+  };
+
+  const handleGenerateTest = () => {
+    localStorage.setItem('customTestConfig', JSON.stringify(selectionMap));
+    window.location.href = '/test';
+  };
+
   return (
     <div className="min-h-screen bg-white text-black p-6">
       <h1 className="text-3xl font-bold mb-4">🧪 Practice Test Setup</h1>
-
-      <label className="block mb-4">
-        <span className="text-lg font-semibold">Select Difficulty:</span>
-        <select
-          className="mt-1 block w-60 border p-2 rounded"
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value)}
-        >
-          <option>Beginner</option>
-          <option>Intermediate</option>
-          <option>Advanced</option>
-        </select>
-      </label>
 
       <h2 className="text-2xl font-bold mb-2">Topics</h2>
 
@@ -58,16 +70,47 @@ const PracticeTestPage: React.FC = () => {
             </div>
 
             {expandedTopic === topic && (
-              <div className="mt-3 ml-4 grid grid-cols-2 gap-2">
+              <div className="mt-3 ml-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {subjects.map((sub) => (
-                  <label key={sub} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedSubjects.has(sub)}
-                      onChange={() => toggleSubject(sub)}
-                    />
-                    <span>{sub}</span>
-                  </label>
+                  <div key={sub} className="flex flex-col border rounded p-2">
+                    <label className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={!!selectionMap[sub]}
+                        onChange={() => toggleSubject(sub)}
+                      />
+                      <span className="font-medium">{sub}</span>
+                    </label>
+
+                    {selectionMap[sub] && (
+                      <div className="flex gap-4 ml-6">
+                        <label className="text-sm">
+                          Difficulty:
+                          <select
+                            value={selectionMap[sub].difficulty}
+                            onChange={(e) => updateSelectionField(sub, 'difficulty', e.target.value)}
+                            className="ml-2 border p-1 rounded"
+                          >
+                            <option>Beginner</option>
+                            <option>Intermediate</option>
+                            <option>Advanced</option>
+                          </select>
+                        </label>
+
+                        <label className="text-sm">
+                          Questions:
+                          <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={selectionMap[sub].numQuestions}
+                            onChange={(e) => updateSelectionField(sub, 'numQuestions', e.target.value)}
+                            className="ml-2 w-16 border p-1 rounded"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -78,16 +121,12 @@ const PracticeTestPage: React.FC = () => {
       {/* ✅ Generate Test Button */}
       <div className="mt-8 text-center">
         <button
-          disabled={selectedSubjects.size === 0}
-          onClick={() => {
-            localStorage.setItem('selectedSubjects', JSON.stringify(Array.from(selectedSubjects)));
-            localStorage.setItem('difficulty', difficulty);
-            window.location.href = "/test";
-          }}
+          disabled={Object.keys(selectionMap).length === 0}
+          onClick={handleGenerateTest}
           className={`px-6 py-3 rounded font-semibold transition ${
-            selectedSubjects.size === 0
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-blue-600 text-white hover:bg-blue-700"
+            Object.keys(selectionMap).length === 0
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
           Generate Test
