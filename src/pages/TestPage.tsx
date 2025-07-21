@@ -20,9 +20,9 @@ const TestPage: React.FC = () => {
     if (!configRaw) return;
 
     interface TopicConfig {
-    difficulty: string;
-    numQuestions: number;
-  }
+      difficulty: string;
+      numQuestions: number;
+    }
 
     const config: Record<string, TopicConfig> = JSON.parse(configRaw);
 
@@ -35,18 +35,15 @@ const TestPage: React.FC = () => {
       }))
     };
 
-    axios.post('http://localhost:5000/wpg/questions', payload)
-      .then(res => {
-        // Flatten if backend returns grouped by topic
-        const allQuestions: Question[] = Array.isArray(res.data)
-          ? res.data.flat()
-          : [];
-
+    axios
+      .post('http://localhost:5000/wpg/questions', payload)
+      .then((res) => {
+        const allQuestions: Question[] = Array.isArray(res.data) ? res.data.flat() : [];
         setQuestions(allQuestions);
         setUserAnswers(new Array(allQuestions.length).fill(''));
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch questions', err);
         setLoading(false);
       });
@@ -58,8 +55,24 @@ const TestPage: React.FC = () => {
     setUserAnswers(updated);
   };
 
-  if (loading) return <div className="p-6 text-lg font-medium">Loading questions...</div>;
-  if (!questions.length) return <div className="p-6 text-lg font-medium">No questions available.</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white text-black">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-lg font-semibold">Generating questions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!questions.length) {
+    return (
+      <div className="p-6 text-lg font-medium text-center">
+        No questions available.
+      </div>
+    );
+  }
 
   const q = questions[currentIndex];
 
@@ -85,7 +98,7 @@ const TestPage: React.FC = () => {
         <div className="flex justify-between">
           <button
             className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 disabled:opacity-50"
-            onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+            onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
             disabled={currentIndex === 0}
           >
             ⬅️ Previous
@@ -93,7 +106,7 @@ const TestPage: React.FC = () => {
 
           <button
             className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-            onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))}
+            onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
             disabled={currentIndex === questions.length - 1}
           >
             Next ➡️
