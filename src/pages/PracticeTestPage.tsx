@@ -14,11 +14,18 @@ const PracticeTestPage: React.FC = () => {
   const [topics, setTopics] = useState<WPGData>({});
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
   const [selectionMap, setSelectionMap] = useState<SelectionConfig>({});
+  const [loading, setLoading] = useState(true); // 👈 Loading state added
 
   useEffect(() => {
     axios.get('http://localhost:5000/wpg/topics')
-      .then((res) => setTopics(res.data))
-      .catch((err) => console.error('Failed to fetch WPG topics:', err));
+      .then((res) => {
+        setTopics(res.data);
+        setLoading(false); // 👈 Done loading
+      })
+      .catch((err) => {
+        console.error('Failed to fetch WPG topics:', err);
+        setLoading(false);
+      });
   }, []);
 
   const toggleSubject = (subject: string) => {
@@ -51,6 +58,17 @@ const PracticeTestPage: React.FC = () => {
     localStorage.setItem('customTestConfig', JSON.stringify(selectionMap));
     window.location.href = '/test';
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white text-black">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-lg font-semibold">Loading topics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-black p-6">
