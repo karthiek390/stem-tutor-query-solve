@@ -1,11 +1,13 @@
 // src/pages/TestPage.tsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { MathJax, MathJaxContext } from 'better-react-mathjax';
 
 interface Question {
   wpg_topic: string;
   wpg_difficulty: string;
   wpg_instance_steps_command: string;
+  wpg_instance: string;
   wpg_instance_answers: { MathematicaSolution: string[] }[];
 }
 
@@ -55,6 +57,19 @@ const TestPage: React.FC = () => {
     setUserAnswers(updated);
   };
 
+  const renderQuestionContent = (q: Question) => {
+    if (q.wpg_instance_steps_command) {
+      return <code className="text-blue-700">{q.wpg_instance_steps_command}</code>;
+    }
+    return (
+      <MathJaxContext>
+        <MathJax>
+          <div dangerouslySetInnerHTML={{ __html: q.wpg_instance }} />
+        </MathJax>
+      </MathJaxContext>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-black">
@@ -85,7 +100,7 @@ const TestPage: React.FC = () => {
 
         <div className="mb-4 p-4 border rounded bg-white shadow">
           <strong>Command:</strong>{' '}
-          <code className="text-blue-700">{q.wpg_instance_steps_command}</code>
+          {renderQuestionContent(q)}
         </div>
 
         <input
